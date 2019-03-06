@@ -18,16 +18,11 @@
 
 package org.eclipse.jetty.servlet;
 
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.core.StringStartsWith.startsWith;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-
 import javax.servlet.ServletException;
 import javax.servlet.ServletInputStream;
 import javax.servlet.http.HttpServlet;
@@ -40,6 +35,12 @@ import org.hamcrest.Matcher;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.nullValue;
+import static org.hamcrest.core.StringStartsWith.startsWith;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 
 @SuppressWarnings("serial")
@@ -203,6 +204,9 @@ public class DispatcherForwardTest
                 req.getRequestDispatcher("/two?" + query2).forward(req, resp);
 
                 checkThat(req.getQueryString(),Matchers.equalTo(query1));
+                String values[] = req.getParameterValues("a");
+                checkThat(values[0],Matchers.equalTo("1 one"));
+                checkThat(values.length,is(1));
                 checkThat(req.getParameter("a"),Matchers.equalTo("1 one"));
                 latch.countDown();
             }
@@ -214,7 +218,13 @@ public class DispatcherForwardTest
             {
                 checkThat(req.getQueryString(),Matchers.equalTo(query3));
                 checkThat(req.getParameter("a"),Matchers.equalTo("1 one"));
+                String[] values = req.getParameterValues("a");
+                checkThat(values[0],Matchers.equalTo("1 one"));
+                checkThat(values.length,is(1));
                 checkThat(req.getParameter("b"),Matchers.equalTo("2 two"));
+                values = req.getParameterValues("b");
+                checkThat(values[0],Matchers.equalTo("2 two"));
+                checkThat(values.length,is(1));
             }
         };
 
@@ -222,6 +232,47 @@ public class DispatcherForwardTest
 
         String request = "" +
                 "GET /one?" + query1 + " HTTP/1.1\r\n" +
+                "Host: localhost\r\n" +
+                "Connection: close\r\n" +
+                "\r\n";
+        String response = connector.getResponse(request);
+        assertTrue(latch.await(5, TimeUnit.SECONDS));
+        assertTrue(response.startsWith("HTTP/1.1 200"), response);
+    }
+
+    /**
+     * Test of https://github.com/eclipse/jetty.project/issues/2074
+     */
+    @Test
+    public void testQueryMerged_Unique() throws Exception
+    {
+        CountDownLatch latch = new CountDownLatch(1);
+        servlet1 = new HttpServlet()
+        {
+            @Override
+            protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException
+            {
+                req.getRequestDispatcher("/two?id=123").forward(req, resp);
+                latch.countDown();
+            }
+        };
+        servlet2 = new HttpServlet()
+        {
+            @Override
+            protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException
+            {
+                checkThat(req.getQueryString(),Matchers.equalTo("id=123"));
+                checkThat(req.getParameter("id"),Matchers.equalTo("123"));
+                String[] values = req.getParameterValues("id");
+                checkThat(values[0],Matchers.equalTo("123"));
+                checkThat(values.length,is(1));
+            }
+        };
+
+        prepare();
+
+        String request = "" +
+                "GET /one?id=123 HTTP/1.1\r\n" +
                 "Host: localhost\r\n" +
                 "Connection: close\r\n" +
                 "\r\n";
@@ -368,7 +419,7 @@ public class DispatcherForwardTest
                 checkThat(req.getQueryString(),Matchers.equalTo(query1));
                 checkThat(req.getParameter("a"),Matchers.equalTo("1 one"));
                 checkThat(req.getParameter("b"),Matchers.equalTo("2 two"));
-                checkThat(req.getParameter("c"), Matchers.nullValue());
+                checkThat(req.getParameter("c"), nullValue());
                 latch.countDown();
             }
         };
@@ -427,7 +478,7 @@ public class DispatcherForwardTest
                 checkThat(req.getQueryString(),Matchers.equalTo(query1));
                 checkThat(req.getParameter("a"),Matchers.equalTo("1 one"));
                 checkThat(req.getParameter("b"),Matchers.equalTo("2 two"));
-                checkThat(req.getParameter("c"), Matchers.nullValue());
+                checkThat(req.getParameter("c"), nullValue());
                 latch.countDown();
             }
         };
@@ -474,7 +525,7 @@ public class DispatcherForwardTest
                 req.getRequestDispatcher("/two").forward(req, resp);
 
                 checkThat(req.getQueryString(),Matchers.equalTo(query1));
-                checkThat(req.getParameter("c"), Matchers.nullValue());
+                checkThat(req.getParameter("c"), nullValue());
                 latch.countDown();
             }
         };
@@ -523,7 +574,7 @@ public class DispatcherForwardTest
                 req.getRequestDispatcher("/two?" + query2).forward(req, resp);
 
                 checkThat(req.getQueryString(),Matchers.equalTo(query1));
-                checkThat(req.getParameter("c"), Matchers.nullValue());
+                checkThat(req.getParameter("c"), nullValue());
                 latch.countDown();
             }
         };

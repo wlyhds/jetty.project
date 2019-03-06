@@ -41,7 +41,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
-
 import javax.servlet.AsyncContext;
 import javax.servlet.AsyncListener;
 import javax.servlet.DispatcherType;
@@ -2486,8 +2485,9 @@ public class Request implements HttpServletRequest
         else
         {
             // Parameters values are accumulated.
-            mergedQueryParams=new MultiMap<>(newQueryParams);
+            mergedQueryParams=new MultiMap<>();
             mergedQueryParams.addAllValues(oldQueryParams);
+            mergedQueryParams.addAllValues(newQueryParams);
         }
 
         setQueryParameters(mergedQueryParams);

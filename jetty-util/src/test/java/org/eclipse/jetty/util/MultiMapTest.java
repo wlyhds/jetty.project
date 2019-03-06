@@ -18,6 +18,13 @@
 
 package org.eclipse.jetty.util;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.junit.jupiter.api.Test;
+
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.nullValue;
@@ -25,14 +32,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-
-import org.junit.jupiter.api.Test;
 
 public class MultiMapTest
 {
@@ -558,6 +557,24 @@ public class MultiMapTest
         list = LazyList.add(list, "pint");
 
         assertTrue(mm.containsValue(list), "Contains Value [" + list + "]");
+    }
+
+    @Test
+    public void testMergeDuplicateMapValues()
+    {
+        MultiMap<String> mm = new MultiMap<>();
+        mm.put("id", "123");
+
+        MultiMap<String> mm2 = new MultiMap<>();
+        mm2.put("id", "123");
+
+        MultiMap<String> merged = new MultiMap<>();
+        merged.addAllValues(mm);
+        merged.addAllValues(mm2);
+
+        assertThat("merged size", merged.size(), is(1));
+        List<String> values = merged.getValues("id");
+        assertThat("merged.values('id').size()", values.size(), is(1));
     }
 
     private void assertArray(String prefix, Object[] actualValues, Object ...expectedValues)
